@@ -16,8 +16,6 @@ def bring_front():
             apps[0].frontmost.set(True)
     except Exception:
         pass
-    w, h = pyautogui.size()
-    pyautogui.click(w // 2, h // 2)
 
 
 def mouse_safe():

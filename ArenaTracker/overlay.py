@@ -1,7 +1,8 @@
 import cv2
-from pathlib import Path
-from typing import List, Tuple
-from config import FRAMES_DIR
+from typing import List
+
+
+WINDOW_TITLE = "Arena Scraper Preview (green=card, red=title)"
 
 
 def draw_boxes(frame, tiles, color_card=(0, 255, 0), color_title=(0, 0, 255)):
@@ -24,10 +25,16 @@ def draw_boxes(frame, tiles, color_card=(0, 255, 0), color_title=(0, 0, 255)):
     return canvas
 
 
-def show_and_save(frame, tiles, page_idx: int, window: bool):
+def show_overlay(frame, tiles, window: bool):
+    if not window:
+        return
     annotated = draw_boxes(frame, tiles)
-    FRAMES_DIR.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(FRAMES_DIR / f"page_{page_idx:04d}.png"), annotated)
-    if window:
-        cv2.imshow("Arena Scraper Preview (green=card, red=title)", annotated)
-        cv2.waitKey(1)
+    cv2.imshow(WINDOW_TITLE, annotated)
+    cv2.waitKey(1)
+
+
+def close_overlay():
+    try:
+        cv2.destroyWindow(WINDOW_TITLE)
+    except cv2.error:
+        pass

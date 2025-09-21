@@ -63,6 +63,11 @@ def _boxes_from_edges(frame):
     return kept
 
 
+def detect_card_boxes(frame):
+    """Detect potential card rectangles in the current frame."""
+    return _boxes_from_edges(frame)
+
+
 def calibrate(frame) -> List[Tile]:
     kept = _boxes_from_edges(frame)
     if len(kept) < 10:
@@ -105,3 +110,34 @@ def load_calibration() -> List[Tile]:
     return [
         Tile(toROI(t["rect"]), toROI(t["title"]), toROI(t["dots"])) for t in d["tiles"]
     ]
+
+
+def layout_matches(frame, tiles: List[Tile], min_matches: int = 10, iou_threshold: float = 0.55) -> bool:
+    """Check whether the expected 2x6 grid of cards is visible."""
+
+    boxes = detect_card_boxes(frame)
+    if not boxes:
+        return False
+
+    def rect_iou(a, b):
+        ax, ay, aw, ah = a
+        bx, by, bw, bh = b
+        x1 = max(ax, bx)
+        y1 = max(ay, by)
+        x2 = min(ax + aw, bx + bw)
+        y2 = min(ay + ah, by + bh)
+        if x2 <= x1 or y2 <= y1:
+            return 0.0
+        inter = (x2 - x1) * (y2 - y1)
+        union = aw * ah + bw * bh - inter
+        if union <= 0:
+            return 0.0
+        return inter / union
+
+    matches = 0
+    for tile in tiles:
+        expected = (tile.rect.x, tile.rect.y, tile.rect.w, tile.rect.h)
+        if any(rect_iou(expected, b) >= iou_threshold for b in boxes):
+            matches += 1
+    needed = min(len(tiles), max(0, min_matches))
+    return matches >= needed
