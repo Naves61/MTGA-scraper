@@ -1,0 +1,10 @@
+opencv-python
+pytesseract
+mss
+pyautogui
+numpy
+requests
+rapidfuzz
+Pillow
+appscript ; sys_platform == 'darwin'
+urllib3<2
