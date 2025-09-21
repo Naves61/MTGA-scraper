@@ -1,6 +1,7 @@
 import json, cv2, numpy as np
 from dataclasses import dataclass
 from typing import List
+from overlay import show_overlay
 from config import CALIB_PATH
 
 
@@ -68,29 +69,43 @@ def detect_card_boxes(frame):
     return _boxes_from_edges(frame)
 
 
-def calibrate(frame) -> List[Tile]:
+def _tile_from_box(box) -> Tile:
+    x, y, w, h = box
+    rect = ROI(x, y, w, h)
+    t_h = int(h * 0.16)
+    title = ROI(
+        x + int(w * 0.06),
+        y + h - t_h + int(t_h * 0.1),
+        w - int(w * 0.12),
+        t_h - int(t_h * 0.2),
+    )
+    d_h = max(12, int(h * 0.06))
+    dots = ROI(x + int(w * 0.25), y + h - t_h - d_h - 2, int(w * 0.5), d_h)
+    return Tile(rect, title, dots)
+
+
+def calibrate(frame, preview: bool = False) -> List[Tile]:
     kept = _boxes_from_edges(frame)
-    if len(kept) < 10:
-        raise RuntimeError("Calibration failed: not enough card rectangles.")
     kept = sorted(kept, key=lambda r: (r[1], r[0]))
+    if len(kept) < 10:
+        if preview and kept:
+            preview_tiles = [_tile_from_box(b) for b in kept]
+            show_overlay(
+                frame,
+                preview_tiles,
+                True,
+                message=f"Calibration detected {len(preview_tiles)} boxes",
+                hold_ms=900,
+            )
+        raise RuntimeError("Calibration failed: not enough card rectangles.")
     ys = [y for _, y, _, _ in kept]
     split = np.median(ys)
     row1 = sorted([b for b in kept if b[1] < split], key=lambda r: r[0])[:6]
     row2 = sorted([b for b in kept if b[1] >= split], key=lambda r: r[0])[:6]
     boxes = row1 + row2
     tiles = []
-    for (x, y, w, h) in boxes:
-        rect = ROI(x, y, w, h)
-        t_h = int(h * 0.16)
-        title = ROI(
-            x + int(w * 0.06),
-            y + h - t_h + int(t_h * 0.1),
-            w - int(w * 0.12),
-            t_h - int(t_h * 0.2),
-        )
-        d_h = max(12, int(h * 0.06))
-        dots = ROI(x + int(w * 0.25), y + h - t_h - d_h - 2, int(w * 0.5), d_h)
-        tiles.append(Tile(rect, title, dots))
+    for box in boxes:
+        tiles.append(_tile_from_box(box))
     return tiles
 
 

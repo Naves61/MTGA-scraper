@@ -103,7 +103,7 @@ def run(recalibrate: bool = False, preview: bool = False, hover_ocr: bool = Fals
 
     if recalibrate or not CALIB_PATH.exists():
         log("Calibrating (edge-based)…")
-        tiles = calibrate(frame)
+        tiles = calibrate(frame, preview=preview)
         save_calibration(tiles)
         log(f"Saved calibration to {CALIB_PATH}")
     else:
@@ -132,10 +132,37 @@ def run(recalibrate: bool = False, preview: bool = False, hover_ocr: bool = Fals
             show_overlay(frame, tiles, preview)
 
             # Process
-            for t in tiles:
+            for idx, t in enumerate(tiles):
+                if preview and page_idx == 0:
+                    show_overlay(
+                        frame,
+                        tiles,
+                        preview,
+                        highlight_idx=idx,
+                        message=f"Scanning card {idx + 1}/{len(tiles)}",
+                        hold_ms=350,
+                    )
                 info = resolve_name(frame, t, use_hover=hover_ocr)
                 name = info["name"] if info else ""
                 owned = count_black_dots(t.dots.crop(frame))
+
+                if preview and page_idx == 0:
+                    display_name = name if name else "<unrecognized>"
+                    trimmed = display_name[:48]
+                    msg = f"Card {idx + 1}/{len(tiles)}: {trimmed}"
+                    if name:
+                        msg += f" (owned: {owned})"
+                    else:
+                        msg += f" (dots: {owned})"
+                    show_overlay(
+                        frame,
+                        tiles,
+                        preview,
+                        highlight_idx=idx,
+                        message=msg,
+                        hold_ms=600,
+                    )
+
                 if name:
                     upsert_collection(name, owned, info)
             export_csv()
